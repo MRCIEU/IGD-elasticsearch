@@ -6,10 +6,10 @@ docker build -t bgc-elasticsearch-image .
 ### Create container
 ```
 #to run in production
-docker run -d -it -v /Users/be15516/projects/bgc-elasticsearch/data:/data --name bgc-elasticsearch bgc-elasticsearch-image
+docker run -d -it -v /path/to/data:/data --name bgc-elasticsearch bgc-elasticsearch-image
 
 #to mount local directory inside container
-docker run -d -it -v /Users/be15516/projects/bgc-elasticsearch/data:/data -v "$PWD":/bin/app --name bgc-elasticsearch bgc-elasticsearch-image
+docker run -d -it -v /path/to/data:/data -v "$PWD":/bin/app --name bgc-elasticsearch bgc-elasticsearch-image
 ```
 
 ### Create index
