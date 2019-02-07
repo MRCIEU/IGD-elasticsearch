@@ -16,7 +16,7 @@ from collections import deque
 
 #elasticsearch
 es = Elasticsearch(
-	[{'host': db_config.elastic_host,'port': db_config.elastic_port}],
+	[{'host': config.elastic_host,'port': config.elastic_port}],
 )
 
 #main function index_gwas_data requires one required, and one optional paramater
@@ -92,7 +92,7 @@ def check_study(study_name,gwas_id,index_name):
 	if os.path.exists(f):
 		print('Checking for previously indexed records...')
 		#check index exists
-        	if es.indices.exists(index_name):
+		if es.indices.exists(index_name):
 			#check no data indexed for this study
 			total = es_study_search(gwas_id,index_name)
 			print('Number of existing records = '+str(total))
