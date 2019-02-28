@@ -4,7 +4,7 @@ import random
 import time
 import json
 import os
-import config
+from config import Config
 import gzip
 import ntpath
 import sys
@@ -16,9 +16,10 @@ from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from collections import deque
 
+config = Config(open('es.cfg'))
 #elasticsearch
 es = Elasticsearch(
-    [{'host': config.elastic_host,'port': config.elastic_port}],
+    [{'host': config.host,'port': config.port}],
 )
 
 #main function index_gwas_data requires one required, and one optional paramater
@@ -192,7 +193,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
                         bulk_data = []
                     l = line.rstrip().decode('utf-8').split(' ')
                     bulk_data.append(line_parser(index_name, gwas_id, l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]))
-        else if file_type(gwas_file) == "bcf":
+        elif file_type(gwas_file) == "bcf":
             bcf_in = VariantFile(gwas_file)
             for rec in bcf_in.fetch():
                 counter+=1
@@ -221,7 +222,7 @@ if __name__ == '__main__':
     parser.add_argument('-m,--method', dest='method', help='(create_index, delete_index, index_data)')
     parser.add_argument('-i,--index_name', dest='index_name', help='the index name')
     parser.add_argument('-g,--gwas_id', dest='gwas_id', help='the GWAS id')
-    parser.add_argument('-f,--gwas_file', dest='gwas_file', help='the GWAS file')
+    parser.add_argument('-f,--gwas_file', dest='gwas_file', help='the GWAS file. Must be either .bcf or .gz')
 
     args = parser.parse_args()
     print(args)
