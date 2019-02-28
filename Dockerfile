@@ -1,8 +1,9 @@
 FROM python:3.6-alpine
 
-RUN pip install elasticsearch
+COPY requirements.txt /
+RUN pip install -r requirements.txt
 
-#ADD add-gwas.py /bin/app
+ADD add-gwas.py /bin/app
 
 # Path
 ENV PATH /bin/app:$PATH
