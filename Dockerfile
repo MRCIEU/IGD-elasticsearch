@@ -12,5 +12,6 @@ RUN wget -O /bin/watcher.py https://raw.githubusercontent.com/MRCIEU/bgc-upload-
 
 # Path
 ENV PATH /app:$PATH
+WORKDIR /app
 
 CMD tail -f /dev/null
