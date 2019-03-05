@@ -1,3 +1,40 @@
+# Upload data to elastic
+
+Example:
+
+Get some data
+
+```
+wget -O data.txt.gz https://www.dropbox.com/s/893esdanl3mkd0c/data.txt.gz?dl=0
+```
+
+Setup environment
+
+```
+virtualenv venv
+. venv/bin/activate
+pip install -r requirements.txt
+```
+
+Create index
+
+```
+./add-gwas.py -m create_index -i testing_index
+```
+
+Add GWAS
+
+```
+./add-gwas.py -m index_data -f data.txt.gz -g 2 -i testing_index
+```
+
+Delete index
+
+```
+./add-gwas.py -m delete_index -i testing_index
+```
+
+
 ### Build image
 ```
 docker build -t bgc-elasticsearch-image .
