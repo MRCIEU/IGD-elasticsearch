@@ -182,7 +182,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
                     }
                     op_dict = {
                         "_index": index_name,
-                        #"_id" : gwas_id+':'+l[0],
+                        "_id" : gwas_id+':'+l[0],
                         "_op_type":'create',
                         "_type": '_doc',
                         "_source":data_dict
