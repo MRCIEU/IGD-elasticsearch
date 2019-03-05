@@ -15,6 +15,7 @@ import math
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from collections import deque
+from pathlib import Path
 
 config = Config(open('es.cfg'))
 #elasticsearch
@@ -101,29 +102,33 @@ def check_gwas(gwas_file,gwas_id,index_name):
     else:
         return {'error':'Error: Can not access file '+gwas_file}
 
-def line_parser(index_name, gwas_id, snp_id, effect_allele='', other_allele='', effect_allele_freq='', beta='', se='', p='', n=''):
-    effect_allele_freq = beta = se = p = n = ''
+def line_parser(index_name, gwas_id, snp_id, effect_allele='', other_allele='', effect_allele_freq='', beta='', se='', p='', n='', logger=None):
+    effect_allele_freq = beta = se = p = n = '',
     try:
-        effect_allele_freq = float(effect_allele_freq)
+        effect_allele_freq = float(effect_allele_freq[0])
     except ValueError:
-        #print(l)
-        logger.info(sno_id+' '+str(gwas_id)+' '+gwas_file+' '+str(counter)+' effect_allele_freq error')
+        effect_allele_freq = None
+        logger.info(snp_id, 'effect_allele_freq error')
     try:
-        beta = float(beta)
+        beta = float(beta[0])
     except ValueError:
-        logger.info(sno_id,gwas_id,gwas_file,counter,'beta error')
+        beta = None
+        logger.info(snp_id,'beta error')
     try:
-        se = float(se)
+        se = float(se[0])
     except ValueError:
-        logger.info(sno_id,gwas_id,gwas_file,counter,'se error')
+        se = None
+        logger.info(snp_id,'se error')
     try:
-        p = float(p)
+        p = float(p[0])
     except ValueError:
-        logger.info(sno_id,gwas_id,gwas_file,counter,'p error')
+        p = None
+        logger.info(snp_id,'p error')
     try:
-        n = float(n.rstrip())
+        n = float(n[0].rstrip())
     except ValueError:
-        logger.info(sno_id,gwas_id)
+        n = None
+        logger.info(snp_id,gwas_id)
     data_dict = {
         'gwas_id':gwas_id,
         'snp_id':snp_id,
@@ -145,7 +150,14 @@ def line_parser(index_name, gwas_id, snp_id, effect_allele='', other_allele='', 
     return(op_dict)
 
 def file_type(filename):
-    os.path.splitext(filename)[1]
+    s = [x.lower() for x in Path(filename).suffixes]
+    if '.bcf' in s:
+        return('bcf')
+    elif '.gz' in s:
+        return('gz')
+    else:
+        print("Unknown filetype")
+        exit
 
 def index_gwas_data(gwas_file, gwas_id, index_name):
     print("Indexing gwas data...")
@@ -153,7 +165,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
     #set up logging
     formatter=logging.Formatter('%(asctime)s %(msecs)d %(threadName)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s',datefmt='%d-%m-%Y:%H:%M:%S')
     #logging.basicConfig(filename=study_name.replace(':','_')+'.log',level=logging.INFO)
-    handler = logging.FileHandler('/data/'+gwas_id.replace(':','_')+'.log')
+    handler = logging.FileHandler(os.path.join(os.path.dirname(gwas_file), "elastic.log"))
     handler.setFormatter(formatter)
 
     logger = logging.getLogger(gwas_id)
@@ -180,6 +192,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
         start = time.time()
         chunkSize = 100000
         if file_type(gwas_file) == "gz":
+            print("Using gzip file")
             with gzip.open(gwas_file) as f:
                 #next(f)
                 for line in f:
@@ -192,8 +205,9 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
                         deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
                         bulk_data = []
                     l = line.rstrip().decode('utf-8').split(' ')
-                    bulk_data.append(line_parser(index_name, gwas_id, l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]))
+                    bulk_data.append(line_parser(index_name, gwas_id, l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7], logger))
         elif file_type(gwas_file) == "bcf":
+            print("Using bcf file")
             bcf_in = VariantFile(gwas_file)
             for rec in bcf_in.fetch():
                 counter+=1
@@ -204,8 +218,57 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
                 if counter % chunkSize == 0:
                     deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
                     bulk_data = []
-                bulk_data.append(line_parser(index_name, gwas_id, rec.id, rec.alts[0], rec.ref, rec.info["AF"][0], rec.info["EFFECT"][0], rec.info["SE"][0], pow(10, -rec.info["L10PVAL"][0]), rec.info["N"][0]))
-
+                effect_allele_freq = beta = se = p = n = '',
+                try:
+                    print(rec.info["AF"][0])
+                    effect_allele_freq = float(rec.info["AF"][0])
+                except:
+                    effect_allele_freq = None
+                    logger.info(rec.id, 'effect_allele_freq error')
+                try:
+                    beta = float(rec.info["EFFECT"][0])
+                except:
+                    beta = None
+                    logger.info(rec.id,'beta error')
+                try:
+                    se = float(rec.info["SE"][0])
+                except:
+                    se = None
+                    logger.info(rec.id,'se error')
+                try:
+                    p = float(pow(10, -rec.info["L10PVAL"][0]))
+                except:
+                    p = None
+                    logger.info(rec.id,'p error')
+                try:
+                    n = float(rec.info["N"][0])
+                except:
+                    n = None
+                    logger.info(rec.id,gwas_id)
+                data_dict = {
+                    'gwas_id':gwas_id,
+                    'snp_id':rec.id,
+                    'effect_allele':rec.alts[0],
+                    'other_allele':rec.ref,
+                    'effect_allele_freq':effect_allele_freq,
+                    'beta':beta,
+                    'se':se,
+                    'p':p,
+                    'n':n
+                }
+                op_dict = {
+                    "_index": index_name,
+                    #"_id" : gwas_id+':'+l[0],
+                    "_op_type":'create',
+                    "_type": '_doc',
+                    "_source":data_dict
+                }
+                print(counter)
+                # bulk_data.append(line_parser(index_name, gwas_id, rec.id, rec.alts[0], rec.ref, rec.info["AF"][0], rec.info["EFFECT"][0], rec.info["SE"][0], pow(10, -rec.info["L10PVAL"][0]), rec.info["N"][0], logger))
+                bulk_data.append(op_dict)
+        else:
+            print("Unrecognised filetype")
+            exit
 
         #print bulk_data[0]
         #print len(bulk_data)
