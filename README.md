@@ -1,6 +1,6 @@
 # Upload data to elastic
 
-Example:
+Example run. Either need to be on elastic server or have tunnel to server open.
 
 Get some data
 
