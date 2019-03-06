@@ -1,6 +1,15 @@
 # Upload data to elastic
 
-Example run. Either need to be on elastic server or have tunnel to server open.
+
+## Connection
+
+Either need to have tunnel to server open or run on elasticsearch server and specify the host and port using
+
+```
+./add-gwas.py ... -h HOSTNAME -p PORT
+```
+
+## Example
 
 Get some data
 
@@ -57,31 +66,25 @@ Delete index
 ```
 
 
-### Build image
+## Running on docker
+
 ```
-docker build -t bgc-elasticsearch-image .
+docker-compose up --build -d
 ```
 
-### Create container
-```
-#to run in production
-docker run -d -it -v /path/to/data:/data --name bgc-elasticsearch bgc-elasticsearch-image
-
-#to mount local directory inside container
-docker run -d -it -v /path/to/data:/data -v "$PWD":/bin/app --name bgc-elasticsearch bgc-elasticsearch-image
-```
 
 ### Create index
 ```
--i = index name
+# -i = index name
 docker exec bgc-elasticsearch add-gwas.py -m create_index -i bgctest
 ```
 
 ### Index data
 
 ```
--f = gwas file
--i = index name
--g = gwas id
-docker exec bgc-elasticsearch add-gwas.py -m index_data -f /data/data-test.gz -i bgctest -g 1
+# -f = gwas file
+# -i = index name
+# -g = gwas id (.txt.gz or .bcf)
+# -t = tophits file (one rsid per row only)
+docker exec bgc-elasticsearch add-gwas.py -m index_data -f /data/data.bcf -i bgctest -g 1 -t tophits.txt
 ```
