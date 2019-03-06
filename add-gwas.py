@@ -13,6 +13,8 @@ import logging
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from collections import deque
+from pathlib import Path
+import subprocess
 
 config = Config(open('es.cfg'))
 #elasticsearch
@@ -79,6 +81,17 @@ def create_index(index_name,shards=5):
         }
         es.indices.create(index = index_name, body = request_body, request_timeout=60)
 
+
+def file_type(filename):
+    s = [x.lower() for x in Path(filename).suffixes]
+    if '.bcf' in s:
+        return('bcf')
+    elif '.gz' in s:
+        return('gz')
+    else:
+        print("Unknown filetype")
+        exit
+
 def check_gwas(gwas_file,gwas_id,index_name):
     print('Checking',gwas_id,gwas_file)
     #check file exists
@@ -100,9 +113,10 @@ def check_gwas(gwas_file,gwas_id,index_name):
         return {'error':'Error: Can not access file '+gwas_file}
 
 
-def index_gwas_data(gwas_file, gwas_id, index_name):
+def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
     print("Indexing gwas data...")
 
+    tophitsflag = tophits_file is not None
     #set up logging
     formatter=logging.Formatter('%(asctime)s %(msecs)d %(threadName)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s',datefmt='%d-%m-%Y:%H:%M:%S')
     #logging.basicConfig(filename=study_name.replace(':','_')+'.log',level=logging.INFO)
@@ -114,89 +128,123 @@ def index_gwas_data(gwas_file, gwas_id, index_name):
     logger.addHandler(handler)
     #do some checks
     check_result = check_gwas(gwas_file,gwas_id,index_name)
-    #print(check_result)
     if 'error' in check_result:
         print(check_result['error'])
+        exit
+
+    # If bcf then extract to txt.gz
+    bcfflag = file_type(gwas_file) == "bcf"
+    if bcfflag:
+        print("Processing bcf to txt.gz")
+        cmd = "bcftools query -f'%ID %ALT %REF %AF %EFFECT %SE %L10PVAL %N\n' " + gwas_file + "| awk '{print $1, $2, $3, $4, $5, $6, 10^-$7, $8}' | gzip -c > " + gwas_file + ".txt.gz"
+        subprocess.call(cmd, shell=True)
+        print("Done")
+        gwas_file = gwas_file + ".txt.gz"
+
+    #remove index from gwas_id
+    if ':' in gwas_id:
+        gwas_id = gwas_id.split(':')[1]
+
+    #print gwas_data,index_name
+    if es.indices.exists(index_name):
+        print("Index already exists, adding to that one then :)")
     else:
-
-        #remove index from gwas_id
-        if ':' in gwas_id:
-            gwas_id = gwas_id.split(':')[1]
-
-        #print gwas_data,index_name
-        if es.indices.exists(index_name):
+        create_index(index_name)
+    if tophitsflag:
+        tophits = [x.strip() for x in open(tophits_file, 'rt')]
+        index_name_tophits = index_name+"-tophits"
+        print("Found " + str(len(tophits)) + " tophits")
+        if es.indices.exists(index_name_tophits):
             print("Index already exists, adding to that one then :)")
         else:
-            create_index(index_name)
-        bulk_data = []
-        counter=0
-        start = time.time()
-        chunkSize = 100000
-        with gzip.open(gwas_file) as f:
-            #next(f)
-            for line in f:
-                counter+=1
-                if counter % 100000 == 0:
-                    end = time.time()
-                    t=round((end - start), 4)
-                    print(gwas_file,t,counter)
-                if counter % chunkSize == 0:
-                    deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
-                    bulk_data = []
-                #print(line.decode('utf-8'))
-                l = line.rstrip().decode('utf-8').split(' ')
-                #print(l)
-                if l[0].startswith('rs'):
-                    effect_allele_freq = beta = se = p = n = ''
-                    try:
-                        effect_allele_freq = float(l[3])
-                    except ValueError:
-                        #print(l)
-                        logger.info(l[0]+' '+str(gwas_id)+' '+gwas_file+' '+str(counter)+' effect_allele_freq error')
-                    try:
-                        beta = float(l[4])
-                    except ValueError:
-                        logger.info(l[0],gwas_id,gwas_file,counter,'beta error')
-                    try:
-                        se = float(l[5])
-                    except ValueError:
-                        logger.info(l[0],gwas_id,gwas_file,counter,'se error')
-                    try:
-                        p = float(l[6])
-                    except ValueError:
-                        logger.info(l[0],gwas_id,gwas_file,counter,'p error')
-                    try:
-                        n = float(l[7].rstrip())
-                    except ValueError:
-                        logger.info(l[0],gwas_id)
-                    data_dict = {
-                            'gwas_id':gwas_id,
-                            'snp_id':l[0],
-                            'effect_allele':l[1],
-                            'other_allele':l[2],
-                            'effect_allele_freq':effect_allele_freq,
-                            'beta':beta,
-                            'se':se,
-                            'p':p,
-                            'n':n
-                    }
-                    op_dict = {
-                        "_index": index_name,
-                        "_id" : gwas_id+':'+l[0],
-                        "_op_type":'create',
-                        "_type": '_doc',
-                        "_source":data_dict
-                    }
-                    bulk_data.append(op_dict)
-                    #bulk_data.append(data_dict)
-        #print bulk_data[0]
-        #print len(bulk_data)
-        deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
-        #refresh the index
-        es.indices.refresh(index=index_name)
-        total = es_gwas_search(gwas_id,index_name)
-        print('Records indexed: '+str(total))
-        logger.info('Records indexed: '+str(total))
+            create_index(index_name_tophits)
+    else:
+        print("No tophits file specified")
+    bulk_data = []
+    bulk_data_tophits = []
+    counter=0
+    start = time.time()
+    chunkSize = 100000
+    with gzip.open(gwas_file) as f:
+        #next(f)
+        for line in f:
+            counter+=1
+            if counter % 100000 == 0:
+                end = time.time()
+                t=round((end - start), 4)
+                print(gwas_file,t,counter)
+            if counter % chunkSize == 0:
+                deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
+                bulk_data = []
+            #print(line.decode('utf-8'))
+            l = line.rstrip().decode('utf-8').split(' ')
+            #print(l)
+            if l[0].startswith('rs'):
+                effect_allele_freq = beta = se = p = n = ''
+                try:
+                    effect_allele_freq = float(l[3])
+                except ValueError:
+                    #print(l)
+                    logger.info(l[0]+' '+str(gwas_id)+' '+gwas_file+' '+str(counter)+' effect_allele_freq error')
+                try:
+                    beta = float(l[4])
+                except ValueError:
+                    logger.info(l[0],gwas_id,gwas_file,counter,'beta error')
+                try:
+                    se = float(l[5])
+                except ValueError:
+                    logger.info(l[0],gwas_id,gwas_file,counter,'se error')
+                try:
+                    p = float(l[6])
+                except ValueError:
+                    logger.info(l[0],gwas_id,gwas_file,counter,'p error')
+                try:
+                    n = float(l[7].rstrip())
+                except ValueError:
+                    logger.info(l[0],gwas_id)
+                data_dict = {
+                        'gwas_id':gwas_id,
+                        'snp_id':l[0],
+                        'effect_allele':l[1],
+                        'other_allele':l[2],
+                        'effect_allele_freq':effect_allele_freq,
+                        'beta':beta,
+                        'se':se,
+                        'p':p,
+                        'n':n
+                }
+                op_dict = {
+                    "_index": index_name,
+                    "_id" : gwas_id+':'+l[0],
+                    "_op_type":'create',
+                    "_type": '_doc',
+                    "_source":data_dict
+                }
+                bulk_data.append(op_dict)
+                if tophitsflag:
+                    if l[0] in tophits:
+                        print(l[0] + " among tophits")
+                        logger.info(l[0] + " among tophits")
+                        op_dict['_index'] = index_name_tophits
+                        bulk_data_tophits.append(op_dict)
+    #print bulk_data[0]
+    #print len(bulk_data)
+    deque(helpers.streaming_bulk(client=es,actions=bulk_data,chunk_size=chunkSize,request_timeout=60),maxlen=0)
+    #refresh the index
+    es.indices.refresh(index=index_name)
+    total = es_gwas_search(gwas_id,index_name)
+    print('Records indexed: '+str(total))
+    logger.info('Records indexed: '+str(total))
+    if tophitsflag:
+        deque(helpers.streaming_bulk(client=es,actions=bulk_data_tophits,chunk_size=chunkSize,request_timeout=60),maxlen=0)
+        es.indices.refresh(index=index_name_tophits)
+        total = es_gwas_search(gwas_id,index_name_tophits)
+        print('Tophit records indexed: '+str(total))
+        logger.info('Tophit records indexed: '+str(total))
+    if bcfflag:
+        print("Removing temporary txt.gz file")
+        os.remove(gwas_file)
+
 
 if __name__ == '__main__':
 
@@ -205,6 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('-i,--index_name', dest='index_name', help='the index name')
     parser.add_argument('-g,--gwas_id', dest='gwas_id', help='the GWAS id')
     parser.add_argument('-f,--gwas_file', dest='gwas_file', help='the GWAS file')
+    parser.add_argument('-t,--tophits', dest='tophits_file', help='List of rs IDs that constitute top hits')
 
     args = parser.parse_args()
     print(args)
@@ -234,6 +283,6 @@ if __name__ == '__main__':
                 print('Please provide a gwas file (-f)')
                 exit
             else:
-                index_gwas_data(gwas_file=args.gwas_file, gwas_id=args.gwas_id, index_name = args.index_name)
+                index_gwas_data(gwas_file=args.gwas_file, gwas_id=args.gwas_id, index_name = args.index_name, tophits_file = args.tophits_file)
         else:
             print("Not a good method")
