@@ -7,7 +7,7 @@ RUN pip install -r requirements.txt
 
 RUN mkdir -p /app
 
-RUN apt-get update && apt-get install -y make gcc zlib1g-dev libbz2-dev lzma-dev lzma liblzma-dev
+RUN apk add --update make gcc zlib1g-dev libbz2-dev lzma-dev lzma liblzma-dev
 RUN curl -SL https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2 \
 | tar -xvj \
 && bcftools-1.9/configure \
