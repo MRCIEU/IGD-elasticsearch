@@ -4,7 +4,6 @@ import random
 import time
 import json
 import os
-from config import Config
 import gzip
 import ntpath
 import sys
@@ -15,12 +14,6 @@ from elasticsearch import helpers
 from collections import deque
 from pathlib import Path
 import subprocess
-
-config = Config(open('es.cfg'))
-#elasticsearch
-es = Elasticsearch(
-    [{'host': config.host,'port': config.port}],
-)
 
 #main function index_gwas_data requires one required, and one optional paramater
 #1. gwas_id (required)
@@ -254,9 +247,19 @@ if __name__ == '__main__':
     parser.add_argument('-g,--gwas_id', dest='gwas_id', help='the GWAS id')
     parser.add_argument('-f,--gwas_file', dest='gwas_file', help='the GWAS file')
     parser.add_argument('-t,--tophits', dest='tophits_file', help='List of rs IDs that constitute top hits')
+    parser.add_argument('-h,--host', dest='host', help='elasticsearch host', default='localhost')
+    parser.add_argument('-p,--port', dest='port', help='elasticsearch port', default='9200')
 
     args = parser.parse_args()
     print(args)
+
+
+    #elasticsearch
+    es = Elasticsearch(
+        [{'host': args.host,'port': args.port}],
+    )
+
+
     if args.method == None:
         print("Please provide a method (create_index, delete_index, index_data)")
     else:
