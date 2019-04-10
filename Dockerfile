@@ -15,8 +15,10 @@ RUN curl -SL https://github.com/samtools/bcftools/releases/download/1.9/bcftools
 && mv bcftools-1.9/bcftools /bin/bcftools \
 && chmod 755 /bin/bcftools
 
-RUN wget -O /bin/watcher.py https://raw.githubusercontent.com/MRCIEU/bgc-upload-orchestrator/master/watcher.py?token=AB1fTMa-e8fsZrhTfgrH2VEnYtpvjtCBks5cgZIdwA%3D%3D \
-&& chmod 755 /bin/watcher.py
+#RUN wget -O /bin/watcher.py https://raw.githubusercontent.com/MRCIEU/bgc-upload-orchestrator/master/watcher.py?token=AB1fTMa-e8fsZrhTfgrH2VEnYtpvjtCBks5cgZIdwA%3D%3D \
+#&& chmod 755 /bin/watcher.py
+ADD watcher.py /home/bin
+RUN chmod 775 /home/bin/watcher.py
 
 
 # Path
