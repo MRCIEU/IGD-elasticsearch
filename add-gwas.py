@@ -247,7 +247,7 @@ if __name__ == '__main__':
     parser.add_argument('-g,--gwas_id', dest='gwas_id', help='the GWAS id')
     parser.add_argument('-f,--gwas_file', dest='gwas_file', help='the GWAS file')
     parser.add_argument('-t,--tophits', dest='tophits_file', help='List of rs IDs that constitute top hits')
-    parser.add_argument('-h,--host', dest='host', help='elasticsearch host', default='localhost')
+    parser.add_argument('-e,--ehost', dest='ehost', help='elasticsearch host', default='localhost')
     parser.add_argument('-p,--port', dest='port', help='elasticsearch port', default='9200')
 
     args = parser.parse_args()
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 
     #elasticsearch
     es = Elasticsearch(
-        [{'host': args.host,'port': args.port}],
+        [{'host': args.ehost,'port': args.port}],
     )
 
 
