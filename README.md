@@ -66,17 +66,17 @@ Delete index
 ```
 
 
-## Running on docker
+## Build docker image
 
 ```
-docker-compose up --build -d
+docker build -t bgc-elasticsearch .
 ```
 
 
 ### Create index
 ```
 # -i = index name
-docker exec bgc-elasticsearch add-gwas.py -m create_index -i bgctest
+docker run bgc-elasticsearch python add-gwas.py -m create_index -i bgctest
 ```
 
 ### Index data
@@ -86,5 +86,5 @@ docker exec bgc-elasticsearch add-gwas.py -m create_index -i bgctest
 # -i = index name
 # -g = gwas id (.txt.gz or .bcf)
 # -t = tophits file (one rsid per row only)
-docker exec bgc-elasticsearch add-gwas.py -m index_data -f /data/data.bcf -i bgctest -g 1 -t tophits.txt
+docker run bgc-elasticsearch python add-gwas.py add-gwas.py -m index_data -f /data/data.bcf -i bgctest -g 1 -t tophits.txt
 ```
