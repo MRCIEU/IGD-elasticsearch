@@ -103,3 +103,17 @@ docker run bgc-elasticsearch python add-gwas.py -m create_index -i bgctest
 docker run bgc-elasticsearch add-gwas.py -m index_data -f /data/data.vcf.gz -i bgctest -g 1 -t tophits.txt
 ```
 
+# Issues
+
+Sometimes an index can be switched to read only, resulting in errros like this:
+
+```
+'error': {'type': 'cluster_block_exception', 'reason': 'blocked by: [FORBIDDEN/12/index read-only / allow delete (api)];'},
+```
+
+To reset, set the index back to read/write
+
+```
+index_name=abc-1
+curl -XPUT -H "Content-Type: application/json" http://localhost:9200/$index_name/_settings -d '{"index.blocks.read_only_allow_delete": false}'
+```
