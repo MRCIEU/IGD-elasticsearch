@@ -117,3 +117,49 @@ To reset, set the index back to read/write
 index_name=abc-1
 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/$index_name/_settings -d '{"index.blocks.read_only_allow_delete": false}'
 ```
+
+# Update by query
+
+Updating a large amount of data is slow and potentially problematic due to timeouts.
+
+```
+from elasticsearch import Elasticsearch
+
+gwas_id='21'
+index='ieu-b-test'
+
+es = Elasticsearch(
+        [{'host': 'localhost','port': '9200'}],
+)
+
+body={
+        "script": {
+            "source": "ctx._source.gwas_id='"+update_id+"-deprecated'",
+            "lang":"painless"
+        },
+        "query":{
+            "term":{"gwas_id":update_id}
+        }
+    }
+es.update_by_query(index=index,body=body,request_timeout=600,conflicts='abort',slices='auto',wait_for_completion=False)
+```
+
+# Delete by query
+
+```
+from elasticsearch import Elasticsearch
+
+gwas_id='21'
+index='ieu-b-test'
+
+es = Elasticsearch(
+        [{'host': 'localhost','port': '9200'}],
+)
+
+body={
+        "query":{
+            "term":{"gwas_id":gwas_id}
+        }
+    }
+es.delete_by_query(index=index,body=body,request_timeout=600,conflicts='abort',slices='auto',wait_for_completion=False)
+```
