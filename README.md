@@ -146,6 +146,8 @@ es.update_by_query(index=index,body=body,request_timeout=600,conflicts='abort',s
 
 # Delete by query
 
+Takes about 10 minutes for 10 million records
+
 ```
 from elasticsearch import Elasticsearch
 
