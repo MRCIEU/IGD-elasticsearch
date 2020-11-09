@@ -18,14 +18,14 @@ You'll need the [bcftools](https://samtools.github.io/bcftools/) binary on your 
 Get some data
 
 ```
-wget -O data.txt.gz https://www.dropbox.com/s/9macshbbkhvfrae/ieu-a-2.txt.gz?dl=0
-wget -O data.vcf.gz https://www.dropbox.com/s/3vxqjmocjx6yo2l/ieu-a-2.vcf.gz?dl=0
+wget https://gwas.mrcieu.ac.uk/files/eqtl-a-ENSG00000064545/eqtl-a-ENSG00000064545.vcf.gz
+wget https://gwas.mrcieu.ac.uk/files/eqtl-a-ENSG00000064545/eqtl-a-ENSG00000064545.vcf.gz.tbi
 ```
 
 Create a random 'tophits' file
 
 ```
-gunzip -c data.txt.gz | cut -d " " -f 1 | head -n 80 > tophits.txt
+zless eqtl-a-ENSG00000064545.vcf.gz| cut -f3 | grep '^rs' | head -n 80 > tophits.txt
 ```
 
 Setup environment

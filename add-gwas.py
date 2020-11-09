@@ -82,6 +82,13 @@ def create_index(index_name,shards=5):
         }
         es.indices.create(index = index_name, body = request_body, request_timeout=TIMEOUT)
 
+def read_write_index(index_name):
+    print(f'Setting {index_name} to read/write')
+    #https://elasticsearch-py.readthedocs.io/en/latest/api.html#elasticsearch.client.IndicesClient.put_settings
+    #curl -XPUT -H "Content-Type: application/json" http://localhost:9200/$index_name/_settings -d '{"index.blocks.read_only_allow_delete": false}'
+    body = {"index.blocks.read_only_allow_delete": False}
+    es.indices.put_settings(body=body,index=index_name)
+
 def extract_vcf(gwas_file,gwas_id):
     # Temporary output file:
     tempDir=os.getenv('tmpDir',"/tmp/")
@@ -96,6 +103,7 @@ def extract_vcf(gwas_file,gwas_id):
 
     if 'SS' in availcols:
         cmd = "bcftools query -f'%CHROM %POS %ID %ALT %REF[ %AF %ES %SE %LP %SS]\n' " + gwas_file + "| awk '{print $1, $2, $3, $4, $5, $6, $7, $8, 10^-$9, $10}' | grep -v inf | gzip -c > " + tempout
+        #print(cmd)
         subprocess.call(cmd, shell=True)
         print("Done")
         return tempout
@@ -192,6 +200,10 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
         print("Index already exists, adding to that one then :)")
     else:
         create_index(index_name)
+
+    #set index to read_write in case it has been set to read only
+    read_write_index(index_name)
+    
     if tophitsflag:
         tophits = [x.strip() for x in open(tophits_file, 'rt')]
         index_name_tophits = index_name+"-tophits"
@@ -200,6 +212,8 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
             print("Index already exists, adding to that one then :)")
         else:
             create_index(index_name_tophits)
+        #set index to read_write in case it has been set to read only
+        read_write_index(index_name)
     else:
         print("No tophits file specified")
     bulk_data = []
@@ -288,24 +302,25 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
     #refresh the index
     es.indices.refresh(index=index_name,request_timeout=TIMEOUT)
     total = es_gwas_search(gwas_id,index_name)
-    print('gwas: ',gwas_id,'records in gwas:',counter,'records in index:',str(total))
+    print(f"# Gwas id: {gwas_id}\n# Records in gwas: {counter}\n# Records in index: {total}")
     logger.info('gwas: '+gwas_id+' records in gwas: '+str(counter)+' records in index: '+str(total))
     if counter == int(total):
-         print('all records indexed ok')
+         print('All records indexed ok')
          logger2.info(index_name+':'+gwas_id+' ok'+' '+str(total))
     else:
-         print('error!, some records not indexed')
+         print('Error!, records indexed and records in file not the same')
          logger2.info(index_name+':'+gwas_id+' '+str(counter-int(total))+' missing')
 
     if tophitsflag:
         deque(helpers.streaming_bulk(client=es,actions=bulk_data_tophits,chunk_size=chunkSize,request_timeout=TIMEOUT,raise_on_error=True,max_retries=3),maxlen=0)
         es.indices.refresh(index=index_name_tophits,request_timeout=TIMEOUT)
         total = es_gwas_search(gwas_id,index_name_tophits)
+        print(f"# Records in tophits file: {len(bulk_data_tophits)}\n# Records in tophits index: {total}")
         if len(bulk_data_tophits) == int(total):
-            print('all tophit records indexed ok')
+            print(f'All tophit records indexed ok')
             logger2.info(index_name+'-tophits:'+gwas_id+' ok'+' '+str(total))
         else:
-            print('error!, some Tophit records not indexed: '+str(total))
+            print('Error!, tophits indexed and tophits in file not the same')
             logger2.info(index_name+'-tophits:'+gwas_id+' '+str(len(bulk_data_tophits)-int(total))+' missing')
     if vcfflag:
         print("Removing temporary txt.gz file")
