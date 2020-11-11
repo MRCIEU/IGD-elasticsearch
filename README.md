@@ -165,3 +165,17 @@ body={
     }
 es.delete_by_query(index=index,body=body,request_timeout=600,conflicts='abort',slices='auto',wait_for_completion=False)
 ```
+
+# Creating an alias and selecting an index to write to
+
+To create an alias 
+
+```
+curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1", "alias" : "ebi-a"} }]}';
+```
+
+To create an alias and select an index for writing
+
+```
+curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1", "alias" : "ebi-a" , "is_write_index" : true} }]}';
+```
