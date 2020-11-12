@@ -171,7 +171,7 @@ es.delete_by_query(index=index,body=body,request_timeout=600,conflicts='abort',s
 Check aliases
 
 ```
-curl -X GET "192.168.0.18:9200/_cat/aliases?v" | sort -k1,2
+curl -X GET "localhost:9200/_cat/aliases?v" | sort -k1,2
 ```
 
 To create an alias 
