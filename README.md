@@ -184,4 +184,5 @@ To create an alias and select an index for writing
 
 ```
 curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1", "alias" : "ebi-a" , "is_write_index" : true} }]}';
+curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1-tophits", "alias" : "ebi-a-tophits" , "is_write_index" : true} }]}';
 ```
