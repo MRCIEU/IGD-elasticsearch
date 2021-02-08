@@ -105,6 +105,18 @@ docker run igd-elasticsearch add-gwas.py -m index_data -f /data/data.vcf.gz -i i
 
 # Issues
 
+### Cluster is red
+
+Check the nodes
+
+```
+curl -X GET "localhost:9200/_cat/nodes?v=true"
+```
+
+See if any nodes are not connected and reboot them
+
+### Read only indexes
+
 Sometimes an index can be switched to read only, resulting in errros like this:
 
 ```
