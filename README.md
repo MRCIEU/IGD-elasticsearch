@@ -130,6 +130,14 @@ index_name=abc-1
 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/$index_name/_settings -d '{"index.blocks.read_only_allow_delete": false}'
 ```
 
+### No space on data nodes
+
+Clean up dumps
+
+```
+sudo rm /var/lib/elasticsearch/*
+```
+
 # Update by query
 
 Updating a large amount of data is slow and potentially problematic due to timeouts.
