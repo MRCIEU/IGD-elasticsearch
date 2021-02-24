@@ -206,3 +206,7 @@ To create an alias and select an index for writing
 curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1", "alias" : "ebi-a" , "is_write_index" : true} }]}';
 curl -XPOST 'http://localhost:9200/_aliases' -H 'Content-Type: application/json' -d '{"actions" : [{ "add" : { "index" : "ebi-a-1-tophits", "alias" : "ebi-a-tophits" , "is_write_index" : true} }]}';
 ```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/6.8/indices-aliases.html#aliases-write-index
+
+Aliases that do not explicitly set is_write_index: true for an index, and only reference one index, will have that referenced index behave as if it is the write index until an additional index is referenced. At that point, there will be no write index and writes will be rejected.
