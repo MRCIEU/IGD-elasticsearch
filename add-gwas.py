@@ -23,12 +23,11 @@ import subprocess
 
 TIMEOUT=500
 
-def es_gwas_search(gwas_id, index_name):
-    res=es.search(
+def es_gwas_count(gwas_id, index_name):
+    res=es.count(
         request_timeout=TIMEOUT,
         index=index_name,
         body={
-            "size":1,
             "query": {
                 "bool" : {
                     "filter" : [
@@ -37,9 +36,9 @@ def es_gwas_search(gwas_id, index_name):
                 }
             }
         })
-    total=res['hits']['total']
-    #print(res)
-    return(total)
+    #total=res['hits']['total']
+    #print(res['count'])
+    return(res['count'])
 
 def delete_index(index_name):
     index_name = index_name.lower()
@@ -140,14 +139,13 @@ def check_gwas(gwas_file,gwas_id,index_name):
         #check index exists
         if es.indices.exists(index_name,request_timeout=TIMEOUT):
             #check no data indexed for this gwas
-            total = es_gwas_search(gwas_id,index_name)
+            total = es_gwas_count(gwas_id,index_name)
             print('Number of existing records = '+str(total))
             #removing this check to enable re-indexing of same data
-            #if int(total)>0:
-            #    return {'error':'Error: Indexed records exist for '+gwas_id}
-            #else:
-            #    return gwas_file
-            return gwas_file
+            if int(total)>0:
+                return {'error':f'Error: Indexed records exist for index "{index_name}" and gwas_id "{gwas_id}". You will need to delete these first, see README.'}
+            else:
+                return gwas_file
         else:
             print('No existing index, so no records :)')
             return gwas_file
@@ -181,10 +179,10 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
     logger2.addHandler(handler2)
 
     #do some checks
-    #check_result = check_gwas(gwas_file,gwas_id,index_name)
-    #if 'error' in check_result:
-    #    print(check_result['error'])
-    #    exit()
+    check_result = check_gwas(gwas_file,gwas_id,index_name)
+    if 'error' in check_result:
+        print(check_result['error'])
+        exit()
 
     # If vcf then extract to txt.gz
     vcfflag = file_type(gwas_file) == "vcf"
@@ -301,7 +299,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
         logger.info('Indexing error: '+gwas_file)
     #refresh the index
     es.indices.refresh(index=index_name,request_timeout=TIMEOUT)
-    total = es_gwas_search(gwas_id,index_name)
+    total = es_gwas_count(gwas_id,index_name)
     print(f"# Gwas id: {gwas_id}\n# Records in gwas: {counter}\n# Records in index: {total}")
     logger.info('gwas: '+gwas_id+' records in gwas: '+str(counter)+' records in index: '+str(total))
     if counter == int(total):
@@ -314,7 +312,7 @@ def index_gwas_data(gwas_file, gwas_id, index_name, tophits_file):
     if tophitsflag:
         deque(helpers.streaming_bulk(client=es,actions=bulk_data_tophits,chunk_size=chunkSize,request_timeout=TIMEOUT,raise_on_error=True,max_retries=3),maxlen=0)
         es.indices.refresh(index=index_name_tophits,request_timeout=TIMEOUT)
-        total = es_gwas_search(gwas_id,index_name_tophits)
+        total = es_gwas_count(gwas_id,index_name_tophits)
         print(f"# Records in tophits file: {len(bulk_data_tophits)}\n# Records in tophits index: {total}")
         if len(bulk_data_tophits) == int(total):
             print(f'All tophit records indexed ok')

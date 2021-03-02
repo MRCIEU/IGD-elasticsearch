@@ -51,7 +51,7 @@ Create index
 Add GWAS using `data.txt.gz`
 
 ```
-./add-gwas.py -m index_data -f data.txt.gz -g 2 -i testing_index
+./add-gwas.py -m index_data -f eqtl-a-ENSG00000064545.vcf.gz -g 2 -i testing_index
 ```
 
 Add GWAS using `data.vcf.gz`
@@ -63,7 +63,8 @@ Add GWAS using `data.vcf.gz`
 Add GWAS and tophits
 
 ```
-./add-gwas.py -m index_data -f data.vcf.gz -g 2 -i testing_index -t tophits.txt
+./add-gwas.py -m delete_index  -i testing_index
+./add-gwas.py -m index_data -f eqtl-a-ENSG00000064545.vcf.gz -g 2 -i testing_index -t tophits.txt
 ```
 
 In parallel
