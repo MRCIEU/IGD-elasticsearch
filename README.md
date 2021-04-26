@@ -131,9 +131,9 @@ index_name=abc-1
 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/$index_name/_settings -d '{"index.blocks.read_only_allow_delete": false}'
 ```
 
-### No space on data nodes
+### No space on data nodes
 
-Clean up dumps
+Clean up dumps on elastic workers
 
 ```
 sudo rm /var/lib/elasticsearch/*
