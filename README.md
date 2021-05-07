@@ -114,7 +114,14 @@ Check the nodes
 curl -X GET "localhost:9200/_cat/nodes?v=true"
 ```
 
-See if any nodes are not connected and reboot them
+See if any nodes are not connected and reboot them or restart elasticsearch
+- first remove any error dumps
+
+```
+sudo rm /var/lib/elasticsearch/java_*
+```
+
+```service elasticsearch restart```
 
 ### Read only indexes
 
