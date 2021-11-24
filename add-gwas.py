@@ -341,9 +341,8 @@ if __name__ == '__main__':
 
 
     #elasticsearch
-    es = Elasticsearch(
-        [{'host': args.ehost,'port': args.port}],
-    )
+    es = Elasticsearch([f"{args.ehost}:{args.port}"])
+
 
 
     if args.method == None:
