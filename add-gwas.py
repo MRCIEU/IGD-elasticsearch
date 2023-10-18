@@ -79,7 +79,7 @@ def create_index(index_name,shards=5):
                 }
             }
         }
-        es.indices.create(index = index_name, body = request_body, request_timeout=TIMEOUT)
+        es.indices.create(index = index_name, body = request_body, request_timeout=TIMEOUT, include_type_name=True)
 
 def read_write_index(index_name):
     print(f'Setting {index_name} to read/write')
